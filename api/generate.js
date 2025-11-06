@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${}`,
+        Authorization: `Bearer ${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}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
