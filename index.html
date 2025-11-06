@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Title Generator</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    * {margin:0; padding:0; box-sizing:border-box;}
+    body {font-family:'Inter',sans-serif; background: linear-gradient(135deg,#0f0c29,#302b63,#24243e); color:#fff; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:2rem 1rem;}
+    .header {text-align:center; margin-bottom:3rem; padding-top:1rem;}
+    .header h1 {font-size:2.5rem; font-weight:700; background:linear-gradient(90deg,#a18cd1,#fbc2eb); -webkit-background-clip:text; background-clip:text; color:transparent; letter-spacing:-0.5px;}
+    .main-content {width:100%; max-width:700px; display:flex; flex-direction:column; align-items:center;}
+    .input-bar {width:100%; padding:1.25rem 1.5rem; font-size:1.1rem; border:none; border-radius:16px; background:rgba(255,255,255,0.08); color:white; outline:none; transition:all 0.3s ease; backdrop-filter:blur(10px); box-shadow:0 4px 20px rgba(0,0,0,0.2);}
+    .input-bar::placeholder {color:rgba(255,255,255,0.5);}
+    .input-bar:focus {background:rgba(255,255,255,0.12); box-shadow:0 4px 25px rgba(161,140,209,0.3);}
+    .generate-btn {margin-top:1.5rem; padding:1rem 2.5rem; font-size:1.1rem; font-weight:600; background:linear-gradient(90deg,#8a2be2,#4b0082); color:white; border:none; border-radius:12px; cursor:pointer; transition:all 0.4s ease; box-shadow:0 6px 20px rgba(138,43,226,0.4); transform:translateY(0);}
+    .generate-btn:hover:not(:disabled) {transform:translateY(-3px); box-shadow:0 10px 25px rgba(138,43,226,0.6);}
+    .generate-btn:active:not(:disabled) {transform:translateY(0);}
+    .generate-btn:disabled {opacity:0.5; cursor:not-allowed; transform:none; box-shadow:0 4px 15px rgba(138,43,226,0.2);}
+    .results-section {margin-top:3rem; width:100%;}
+    .results-section h2 {font-size:1.5rem; margin-bottom:1.5rem; text-align:center; color:#e0d6ff;}
+    .titles-container {display:flex; flex-direction:column; gap:1.25rem;}
+    .title-card {background:rgba(30,25,60,0.6); border:1px solid rgba(161,140,209,0.3); border-radius:14px; padding:1.25rem; font-size:1.1rem; text-align:center; transition:all 0.3s ease; backdrop-filter:blur(10px); box-shadow:0 4px 15px rgba(0,0,0,0.15); animation:fadeInUp 0.5s ease forwards;}
+    .title-card:hover {border-color:rgba(161,140,209,0.6); box-shadow:0 6px 20px rgba(138,43,226,0.25); transform:translateY(-2px);}
+    .who-we-are {margin-top:4rem; text-align:center; max-width:600px; padding:1.5rem; background:rgba(20,15,40,0.4); border-radius:16px; backdrop-filter:blur(10px);}
+    .who-we-are h3 {font-size:1.4rem; margin-bottom:0.75rem; color:#d1c4e9;}
+    .who-we-are p {font-size:1rem; line-height:1.6; color:#e0d6ff;}
+    .wallet-address {font-weight:600; color:#a18cd1; word-break:break-all;}
+    @keyframes fadeInUp {from{opacity:0; transform:translateY(20px);}to{opacity:1; transform:translateY(0);}}
+    @media(max-width:768px){.header h1{font-size:2rem;}.input-bar{padding:1rem 1.25rem; font-size:1rem;}.generate-btn{padding:0.9rem 2rem; font-size:1rem;}.title-card{padding:1rem; font-size:1rem;}}
+    @media(max-width:480px){body{padding:1.5rem 0.8rem;}.header h1{font-size:1.75rem;}.input-bar{padding:0.9rem 1rem;}.generate-btn{padding:0.8rem 1.8rem;}}
+</style>
+</head>
+<body>
+<header class="header"><h1>YT Title Generator</h1></header>
+<main class="main-content">
+<input type="text" class="input-bar" id="topicInput" placeholder="Enter your video topic or prompt...">
+<button class="generate-btn" id="generateBtn" disabled>Generate Titles</button>
+<section class="results-section" id="resultsSection" style="display:none;">
+<h2>Generated Titles</h2>
+<div class="titles-container" id="titlesContainer"></div>
+</section>
+</main>
+<footer class="who-we-are">
+<h3>Who We Are</h3>
+<p>YT Title Generator is a non-profit project. If you'd like to support us, you can donate to the following Solana wallet: <span class="wallet-address">DLG4Rx2mmJ4FmmLc7NZwugShh7sk2exAFFnRE5VAS1Ei</span></p>
+</footer>
+
+<!-- Load Hugging Face Transformers.js -->
+<script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.0.0/dist/transformers.min.js"></script>
+<script>
+const topicInput = document.getElementById('topicInput');
+const generateBtn = document.getElementById('generateBtn');
+const resultsSection = document.getElementById('resultsSection');
+const titlesContainer = document.getElementById('titlesContainer');
+
+// Enable button only if input is not empty
+topicInput.addEventListener('input', () => {
+    generateBtn.disabled = topicInput.value.trim() === '';
+});
+
+// Load model globally
+let generatorModel;
+async function loadModel() {
+    generateBtn.disabled = true;
+    generateBtn.textContent = "Loading Model...";
+    generatorModel = await window.transformers.pipeline('text2text-generation', 'Xenova/flan-t5-small');
+    generateBtn.textContent = "Generate Titles";
+    generateBtn.disabled = false;
+}
+loadModel();
+
+// Generate titles using the model
+async function generateTitles(topic) {
+    titlesContainer.innerHTML = '';
+    resultsSection.style.display = 'block';
+    for (let i=0; i<5; i++){
+        const prompt = `Generate a catchy YouTube title for the topic: ${topic}`;
+        const output = await generatorModel(prompt, {max_length:50});
+        const card = document.createElement('div');
+        card.className = 'title-card';
+        card.textContent = output[0].generated_text;
+        card.style.animationDelay = `${i*0.1}s`;
+        titlesContainer.appendChild(card);
+    }
+}
+
+// Button click handler
+generateBtn.addEventListener('click', async () => {
+    const topic = topicInput.value.trim();
+    if(topic) await generateTitles(topic);
+});
+</script>
+</body>
+</html>
