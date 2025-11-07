@@ -1,55 +1,99 @@
-<script>
-const topicInput = document.getElementById('topicInput');
-const generateBtn = document.getElementById('generateBtn');
-const resultsSection = document.getElementById('resultsSection');
-const titlesContainer = document.getElementById('titlesContainer');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YT Title Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* … (mantén todo tu CSS igual) … */
+  </style>
+</head>
+<body>
+  <header class="header"><h1>YT Title Generator</h1></header>
+  <main class="main-content">
+    <input type="text" class="input-bar" id="topicInput" placeholder="Enter your video topic or prompt...">
+    <button class="generate-btn" id="generateBtn" disabled>Generate Titles</button>
+    <section class="results-section" id="resultsSection" style="display:none;">
+      <h2>Generated Titles</h2>
+      <div class="titles-container" id="titlesContainer"></div>
+    </section>
+  </main>
+  <footer class="who-we-are">
+    <h3>Who We Are</h3>
+    <p>YT Title Generator is a non‑profit project. If you'd like to support us, you can donate to the following Solana wallet: <span class="wallet-address">DLG4Rx2mmJ4FmmLc7NZwugShh7sk2exAFFnRE5VAS1Ei</span></p>
+  </footer>
 
-topicInput.addEventListener('input', () => {
-  generateBtn.disabled = topicInput.value.trim() === '';
-});
+  <script>
+    const topicInput = document.getElementById('topicInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const resultsSection = document.getElementById('resultsSection');
+    const titlesContainer = document.getElementById('titlesContainer');
 
-async function generateTitles(topic) {
-  titlesContainer.innerHTML = '';
-  resultsSection.style.display = 'block';
+    const HF_TOKEN = "YOUR_HF_TOKEN_HERE";
+    const MODEL = "google/flan‑t5‑small";  // o cualquier otro modelo que acepte generación en Hugging Face
 
-  try {
-    const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic })
+    topicInput.addEventListener('input', () => {
+      generateBtn.disabled = topicInput.value.trim() === '';
     });
 
-    const data = await res.json();
+    async function callHuggingFaceAPI(topic) {
+      const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${HF_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          inputs: `Generate 5 catchy YouTube titles for the topic: ${topic}`,
+          parameters: { max_new_tokens:50, num_return_sequences:5 }
+        })
+      });
+      const data = await response.json();
+      return data;
+    }
 
-    if (Array.isArray(data)) {
-      data.forEach((item, i) => {
+    async function generateTitles(topic) {
+      titlesContainer.innerHTML = '';
+      resultsSection.style.display = 'block';
+      try {
+        const apiResponse = await callHuggingFaceAPI(topic);
+        if (Array.isArray(apiResponse)) {
+          apiResponse.forEach((item, i) => {
+            const card = document.createElement('div');
+            card.className = 'title-card';
+            card.textContent = item.generated_text || item.text || "No title";
+            card.style.animationDelay = `${i * 0.1}s`;
+            titlesContainer.appendChild(card);
+          });
+        } else {
+          // fallback si la respuesta no es array
+          const card = document.createElement('div');
+          card.className = 'title-card';
+          card.textContent = "Error generating titles";
+          titlesContainer.appendChild(card);
+        }
+      } catch(err) {
+        console.error("Error generating titles:", err);
         const card = document.createElement('div');
         card.className = 'title-card';
-        card.textContent = item.generated_text || item.text || "No title";
-        card.style.animationDelay = `${i*0.1}s`;
+        card.textContent = "Error generating titles";
         titlesContainer.appendChild(card);
-      });
-    } else {
-      const card = document.createElement('div');
-      card.className = 'title-card';
-      card.textContent = "Error generating titles";
-      titlesContainer.appendChild(card);
+      }
     }
-  } catch (err) {
-    console.error(err);
-    const card = document.createElement('div');
-    card.className = 'title-card';
-    card.textContent = "Error generating titles";
-    titlesContainer.appendChild(card);
-  }
-}
 
-generateBtn.addEventListener('click', async () => {
-  const topic = topicInput.value.trim();
-  if (!topic) return;
-  generateBtn.disabled = true;
-  await generateTitles(topic);
-  generateBtn.disabled = false;
-});
-</script>
+    // Activar el botón ahora que la página está cargada
+    generateBtn.disabled = false;
+
+    generateBtn.addEventListener('click', async () => {
+      const topic = topicInput.value.trim();
+      if (!topic) return;
+      generateBtn.disabled = true;
+      await generateTitles(topic);
+      generateBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>
+
 
